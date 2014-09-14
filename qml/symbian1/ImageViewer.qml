@@ -1,11 +1,15 @@
 import QtQuick 1.0
 import com.nokia.symbian 1.0
+import com.nokia.extras 1.0
+import com.yeatse.tbclient 1.0
 import "Component"
+import "imageviewer.js" as Js
 
 MyPage {
     id: page;
 
     property url imageUrl;
+    property string _path;
 
     title: qsTr("Image viewer");
 
@@ -15,14 +19,37 @@ MyPage {
             toolTipText: qsTr("Save image");
             iconSource: "gfx/save.svg";
             onClicked: {
-                var path = tbsettings.imagePath + "/" + imageUrl.toString().split("/").pop();
-                if (utility.saveCache(imageUrl, path)){
-                    signalCenter.showMessage(qsTr("Image saved to %1").arg(path));
-                } else {
-                    utility.openURLDefault(imageUrl);
-                }
+                _path = tbsettings.imagePath + "/" + imageUrl.toString().split("/").pop();
+                downloader.abortDownload(true);
+                downloader.appendDownload(imageUrl, _path);
+                imageInfoBanner.timeout = 3600000;
+                imageInfoBanner.interactive = false;
+                imageInfoBanner.text = imageInfoBanner.text = "正在下载 0%";
+                console.log(imageInfoBanner.text);
+                imageInfoBanner.open();
             }
         }
+    }
+
+    Downloader {
+        id: downloader;
+        onStateChanged: {
+            if (state == 3 && error == 0){
+                imageInfoBanner.interactive = true;
+                imageInfoBanner.timeout = 3000;
+                imageInfoBanner.text = "图片已保存至 " + _path;
+                console.log(imageInfoBanner.text);
+            }
+        }
+        onProgressChanged: {
+            imageInfoBanner.text = "正在下载 " + Js.getProgress(progress) + "%";
+            console.log(imageInfoBanner.text);
+        }
+    }
+    InfoBanner {
+        id: imageInfoBanner;
+        interactive: false;
+        timeout: 3600000;
     }
 
     Flickable {
